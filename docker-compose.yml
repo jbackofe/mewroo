@@ -1,0 +1,55 @@
+services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:25.8
+    environment:
+      CLICKHOUSE_DB: default
+      CLICKHOUSE_USER: mewroo
+      CLICKHOUSE_PASSWORD: mewroo
+    ports:
+      - "8123:8123" # HTTP
+      - "9000:9000" # Native (optional)
+    volumes:
+      - ch_data:/var/lib/clickhouse
+      - ./backend/db_clickhouse/init:/docker-entrypoint-initdb.d:ro
+      - ./backend/db_clickhouse/data:/data:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8123/ping | grep -q Ok"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    environment:
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_HTTP_PORT: "8123"
+      CLICKHOUSE_DATABASE: default
+      CLICKHOUSE_USER: mewroo
+      CLICKHOUSE_PASSWORD: mewroo
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    environment:
+      # Helps Windows + Docker file watching
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+
+volumes:
+  ch_data:
