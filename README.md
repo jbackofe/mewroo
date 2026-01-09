@@ -1,5 +1,7 @@
 # mewroo
 
+![Mewroo](./mewroo.png)
+
 This repository contains a full-stack web application with:
 
 - Frontend: React + Vite + Tailwind v4 + shadcn/ui
